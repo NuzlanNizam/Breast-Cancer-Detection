@@ -1,0 +1,66 @@
+import cv2
+import numpy as np
+import skimage.feature as skf
+import skimage.io as skio
+
+# Load the mammographic image
+image = cv2.imread("C:\Dell\mammographic_image.jpg")
+
+# Convert the image to grayscale
+gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+# Threshold the image to create a binary image
+threshold, binary = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY)
+
+# Find the contours in the binary image
+contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+# Select the contour of the lesion
+lesion_contour = contours[0]
+
+# Compute the perimeter, area, and compactness of the lesion
+perimeter = cv2.arcLength(lesion_contour, True)
+area = cv2.contourArea(lesion_contour)
+compactness = 4 * np.pi * area / perimeter ** 2
+
+# Compute the density of the lesion
+density = np.count_nonzero(binary) / area
+
+# Compute the bounding rectangle of the lesion
+x, y, w, h = cv2.boundingRect(lesion_contour)
+
+# Compute the aspect ratio of the bounding rectangle
+aspect_ratio = w / h
+
+# Compute the center of the lesion
+M = cv2.moments(lesion_contour)
+cX = int(M["m10"] / M["m00"])
+cY = int(M["m01"] / M["m00"])
+
+# Create a binary image of the same size as the original image
+binary_lesion = np.zeros(image.shape, dtype=np.uint8)
+
+# Draw the lesion contour on the binary image
+cv2.drawContours(binary_lesion, [lesion_contour], -1, 255, -1)
+
+# Load the mammographic image to GLCM
+image_GLCM = skio.imread("C:\Dell\mammographic_image.jpg", as_gray=True)
+
+# Compute the GLCM of the image
+glcm = skf.greycomatrix(image_GLCM, [5], [0], 256, symmetric=True, normed=True)
+
+# Compute the texture features from the GLCM
+contrast = skf.greycoprops(glcm, 'contrast')
+dissimilarity = skf.greycoprops(glcm, 'dissimilarity')
+homogeneity = skf.greycoprops(glcm, 'homogeneity')
+ASM = skf.greycoprops(glcm, 'ASM')
+
+# Print the features of the lesion
+print("Perimeter:", perimeter)
+print("Area:", area)
+print("Compactness:", compactness)
+print("Density:", density)
+print("Contrast:", contrast[0][0])
+print("Dissimilarity:", dissimilarity[0][0])
+print("Homogeneity:", homogeneity[0][0])
+print("Angular Second Moment:", ASM[0][0])
